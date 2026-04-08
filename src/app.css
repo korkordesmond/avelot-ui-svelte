@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Alef:wght@400;700&display=swap');
+@import "tailwindcss";
+
+
+body {
+  font-family: 'Alef', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}   
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+   
