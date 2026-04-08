@@ -764,6 +764,9 @@
     .prizes-grid {
       grid-template-columns: repeat(2, 1fr);
     }
+    .page{
+      padding-bottom: 7rem;
+    }
   }
 
   @media (min-width: 900px) {

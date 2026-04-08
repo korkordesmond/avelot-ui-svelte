@@ -289,7 +289,7 @@
     min-height: 100vh;
     background: #f5f2eb;
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    padding-bottom: 3rem;
+    padding-bottom: 4rem;
   }
 
   .container {
@@ -693,6 +693,11 @@
 
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+  @media (min-width: 600px){
+    .page{
+      padding-bottom: 6rem;
+    }
   }
 
   @media (max-width: 480px) {

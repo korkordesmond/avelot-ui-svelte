@@ -259,7 +259,7 @@
   .page {
     min-height: 100vh;
     background: #f5f2eb;
-    padding-bottom: 4rem;
+    padding-bottom: 3rem;
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
@@ -522,6 +522,9 @@
   @media (min-width: 640px) {
     .stats-row {
       grid-template-columns: repeat(3, 1fr);
+    }
+    .page{
+      padding-bottom: 6rem;
     }
   }
 

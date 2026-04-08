@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { 
     Bell, 
-    ArrowLeft, 
+    ChevronLeft, 
     CheckCircle, 
     AlertCircle, 
     Info, 
@@ -164,7 +164,7 @@
     <div class="topbar-inner">
       <div class="header-left">
         <button onclick={() => goto('/')} class="back-btn">
-          <ArrowLeft size={20} />
+          <ChevronLeft size={20} />
         </button>
         <div class="logo-area">
           <div class="icon-wrap">
@@ -313,7 +313,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 20px;
+    padding: 12px 20px 12px 2px;
     max-width: 1100px;
     margin: 0 auto;
   }
