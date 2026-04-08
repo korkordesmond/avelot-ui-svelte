@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowRight, Timer, Gift, Sparkles, Trophy } from 'lucide-svelte';
+  import { ArrowRight, Timer, Gift, Trophy, Sparkles, Users, Clock } from 'lucide-svelte';
 
   interface Props {
     name: string;
@@ -11,107 +11,332 @@
   const daysLeft = $derived(
     Math.max(0, Math.ceil((endsIn.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
   );
+  
   const formattedAmount = $derived(
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
   );
-  
-  // Determine prize tier for styling
+
   const prizeTier = $derived(
     amount >= 10000000 ? 'jackpot' : amount >= 1000000 ? 'mega' : 'standard'
   );
-  
-  const tierColors = {
-    jackpot: {
-      border: 'border-amber-400',
-      badge: 'from-amber-500 to-orange-500',
-      button: 'from-amber-500 to-orange-500',
-      amount: 'text-amber-400',
-      tag: 'bg-amber-100 text-amber-700'
-    },
-    mega: {
-      border: 'border-purple-400',
-      badge: 'from-purple-500 to-pink-500',
-      button: 'from-purple-500 to-pink-500',
-      amount: 'text-purple-400',
-      tag: 'bg-purple-100 text-purple-700'
-    },
-    standard: {
-      border: 'border-blue-400',
-      badge: 'from-blue-500 to-cyan-500',
-      button: 'from-blue-500 to-cyan-500',
-      amount: 'text-blue-400',
-      tag: 'bg-blue-100 text-blue-700'
+
+  function getTierColor() {
+    switch(prizeTier) {
+      case 'jackpot': return 'gold';
+      case 'mega': return 'purple';
+      default: return 'blue';
     }
-  };
-  
-  const colors = tierColors[prizeTier];
+  }
+
+  function formatAmountShort(amount: number): string {
+    if (amount >= 1_000_000) {
+      return `$${(amount / 1_000_000).toFixed(1)}M`;
+    }
+    if (amount >= 1_000) {
+      return `$${(amount / 1_000).toFixed(0)}K`;
+    }
+    return `$${amount.toLocaleString()}`;
+  }
 </script>
 
-<article class="group relative bg-white rounded-2xl border-2 {colors.border} overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-  <div class="p-5">
+<article class="prize-card">
+  <div class="prize-card-inner">
     <!-- Header -->
-    <div class="flex justify-between items-start mb-4">
-      <div class="flex items-center gap-2">
-        <Trophy size={18} class="text-gray-500" />
-        <span class="font-bold text-gray-800 text-base">{name}</span>
-      </div>
-      <div class="flex items-center gap-1.5 bg-gray-100 py-1.5 px-3 rounded-full">
-        <Timer size={12} class="text-orange-500" />
-        <span class="text-xs font-bold text-gray-700">
-          {daysLeft} {daysLeft === 1 ? 'DAY' : 'DAYS'} LEFT
-        </span>
-      </div>
-    </div>
-    
-    <!-- Prize Amount -->
-    <div class="mb-5">
-      <span class="text-4xl font-black {colors.amount}">
-        {formattedAmount}
-      </span>
-      {#if prizeTier === 'jackpot'}
-        <Sparkles size={20} class="text-amber-500 inline-block ml-2" />
-      {/if}
-    </div>
-    
-    <!-- Progress Bar -->
-    <div class="mb-4">
-      <div class="flex justify-between text-xs text-gray-500 mb-1">
-        <span>Time remaining</span>
-        <span>{daysLeft} days</span>
-      </div>
-      <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-full bg-gradient-to-r {colors.badge} rounded-full" style="width: {Math.min(100, (daysLeft / 30) * 100)}%"></div>
-      </div>
-    </div>
-    
-    <!-- Enter Button -->
-    <a href="/draws/{name.toLowerCase().replace(/\s+/g, '-')}" class="block">
-      <div class="flex items-center justify-between bg-gradient-to-r {colors.button} rounded-xl py-3 px-4 transition-all duration-300 hover:opacity-90 group/btn shadow-md">
-        <span class="font-bold text-white text-sm tracking-wide">ENTER DRAW</span>
-        <div class="bg-white/20 rounded-full p-1 group-hover/btn:translate-x-1 transition-transform">
-          <ArrowRight size={14} class="text-white" />
+    <div class="prize-header">
+      <div class="prize-title-group">
+        <div class="prize-icon {prizeTier}">
+          {#if prizeTier === 'jackpot'}
+            <Trophy size={14} />
+          {:else if prizeTier === 'mega'}
+            <Sparkles size={14} />
+          {:else}
+            <Gift size={14} />
+          {/if}
         </div>
+        <span class="prize-name">{name}</span>
+      </div>
+      <div class="days-pill {daysLeft <= 3 ? 'urgent' : ''}">
+        <Clock size={10} />
+        <span>{daysLeft} {daysLeft === 1 ? 'day' : 'days'} left</span>
+      </div>
+    </div>
+
+    <!-- Prize Amount -->
+    <div class="prize-amount-wrapper">
+      <div class="prize-amount">{formattedAmountShort(amount)}</div>
+      <div class="prize-tier-badge {prizeTier}">
+        {#if prizeTier === 'jackpot'}
+          Jackpot
+        {:else if prizeTier === 'mega'}
+          Mega Draw
+        {:else}
+          Standard Draw
+        {/if}
+      </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span>Time remaining</span>
+        <span class="days-remaining">{daysLeft} days</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill {prizeTier}" style="width: {Math.min(100, (daysLeft / 30) * 100)}%"></div>
+      </div>
+    </div>
+
+    <!-- Enter Button -->
+    <a href="/draws/{name.toLowerCase().replace(/\s+/g, '-')}" class="enter-btn {prizeTier}">
+      <span>Enter draw</span>
+      <div class="arrow-circle">
+        <ArrowRight size={12} />
       </div>
     </a>
-    
-    <!-- Prize tier tag -->
-    <div class="mt-3">
-      {#if prizeTier === 'jackpot'}
-        <span class="inline-flex items-center gap-1 text-xs font-semibold {colors.tag} px-2 py-1 rounded-full">
-          <Sparkles size={10} />
-          JACKPOT PRIZE
-        </span>
-      {:else if prizeTier === 'mega'}
-        <span class="inline-flex items-center gap-1 text-xs font-semibold {colors.tag} px-2 py-1 rounded-full">
-          <Gift size={10} />
-          MEGA DRAW
-        </span>
-      {:else}
-        <span class="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-          <Timer size={10} />
-          STANDARD DRAW
-        </span>
-      {/if}
+
+    <!-- Stats Footer -->
+    <div class="card-footer">
+      <div class="stat-item">
+        <Users size={10} />
+        <span>1,240 joining</span>
+      </div>
     </div>
   </div>
 </article>
+
+<style>
+  .prize-card {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    overflow: hidden;
+  }
+
+  .prize-card:hover {
+    border-color: #ddd6cc;
+    background: #ffffff;
+    transform: translateY(-2px);
+  }
+
+  .prize-card-inner {
+    padding: 18px;
+  }
+
+  /* Header */
+  .prize-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .prize-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .prize-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .prize-icon.jackpot {
+    background: #fef3c7;
+    color: #f59e0b;
+  }
+
+  .prize-icon.mega {
+    background: #ede9fe;
+    color: #8b5cf6;
+  }
+
+  .prize-icon.standard {
+    background: #dbeafe;
+    color: #3b82f6;
+  }
+
+  .prize-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c2418;
+  }
+
+  .days-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #f0ebe3;
+    border-radius: 40px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #9b8f7e;
+  }
+
+  .days-pill.urgent {
+    background: #fee2e2;
+    color: #ef4444;
+  }
+
+  /* Prize Amount */
+  .prize-amount-wrapper {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .prize-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c2418;
+    letter-spacing: -0.02em;
+  }
+
+  .prize-tier-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 40px;
+  }
+
+  .prize-tier-badge.jackpot {
+    background: #fef3c7;
+    color: #f59e0b;
+  }
+
+  .prize-tier-badge.mega {
+    background: #ede9fe;
+    color: #8b5cf6;
+  }
+
+  .prize-tier-badge.standard {
+    background: #dbeafe;
+    color: #3b82f6;
+  }
+
+  /* Progress Section */
+  .progress-section {
+    margin-bottom: 16px;
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #b8ab9a;
+    margin-bottom: 6px;
+  }
+
+  .days-remaining {
+    font-weight: 500;
+    color: #2c2418;
+  }
+
+  .progress-track {
+    height: 4px;
+    background: #f0ebe3;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+  }
+
+  .progress-fill.jackpot {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  }
+
+  .progress-fill.mega {
+    background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+  }
+
+  .progress-fill.standard {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  }
+
+  /* Enter Button */
+  .enter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f0ebe3;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
+
+  .enter-btn:hover {
+    background: #e8e0d6;
+  }
+
+  .enter-btn span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #2c2418;
+  }
+
+  .arrow-circle {
+    width: 24px;
+    height: 24px;
+    background: #d1cbbc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2c2418;
+    transition: all 0.2s;
+  }
+
+  .enter-btn:hover .arrow-circle {
+    transform: translateX(2px);
+    background: #b8ab9a;
+  }
+
+  /* Card Footer */
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e8e4dc;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #b8ab9a;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .prize-card-inner {
+      padding: 14px;
+    }
+
+    .prize-amount {
+      font-size: 22px;
+    }
+
+    .prize-name {
+      font-size: 13px;
+    }
+  }
+</style>

@@ -1,139 +1,108 @@
 <script lang="ts">
-  import { BanknoteArrowDown, BanknoteArrowUp, CreditCard, Wallet as WalletIcon, Building2, Clock, CheckCircle, AlertCircle, X, Shield, History, QrCode, ArrowLeft } from 'lucide-svelte';
+  import { CreditCard, Wallet as WalletIcon, Building2, QrCode, Clock, History, CheckCircle, AlertCircle, X, ArrowDownLeft, ArrowUpRight, TrendingUp, Sparkles } from 'lucide-svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  
-  // Get mode from URL path
+
   let activeMode: 'deposit' | 'withdraw' = $derived(
     $page.url.pathname.includes('/withdraw') ? 'withdraw' : 'deposit'
   );
-  
+
   let amount: string = $state('');
   let isLoading: boolean = $state(false);
   let showSuccess: boolean = $state(false);
   let showError: boolean = $state(false);
   let errorMessage: string = $state('');
-  let transactionId: string = $state('');
   let selectedPaymentMethod: string = $state('card');
-  
-  // Withdrawal bank details
+
   let bankName: string = $state('');
   let accountNumber: string = $state('');
   let accountName: string = $state('');
-  
-  // Available balance
+
   let balance: number = $state(2500000);
-  
-  // Quick amount options - responsive sizing
+
   const quickAmounts = [100, 500, 1000, 5000, 10000];
-  
-  // Payment methods
+
   const paymentMethods = [
-    { id: 'card', name: 'Card', icon: CreditCard, description: 'Credit / Debit' },
-    { id: 'wallet', name: 'Wallet', icon: WalletIcon, description: 'Digital Wallet' },
-    { id: 'bank', name: 'Bank', icon: Building2, description: 'Bank Transfer' },
-    { id: 'crypto', name: 'Crypto', icon: QrCode, description: 'USDT / BTC' },
+    { id: 'card',   name: 'Card',   icon: CreditCard  },
+    { id: 'wallet', name: 'Wallet', icon: WalletIcon   },
+    { id: 'bank',   name: 'Bank',   icon: Building2    },
+    { id: 'crypto', name: 'Crypto', icon: QrCode       },
   ];
-  
+
   const modeConfig = {
     deposit: {
-      icon: BanknoteArrowUp,
-      iconColor: 'text-emerald-500',
-      bgGradient: 'from-emerald-500 to-teal-600',
-      buttonText: 'Deposit',
+      icon: ArrowDownLeft,
       minAmount: 5,
-      color: 'emerald',
-      path: '/wallet/deposit'
+      path: '/wallet/deposit',
+      note: 'Instant · Secure · No fees',
+      buttonText: 'Deposit funds',
+      accent: 'emerald',
     },
     withdraw: {
-      icon: BanknoteArrowDown,
-      iconColor: 'text-rose-500',
-      bgGradient: 'from-rose-500 to-pink-600',
-      buttonText: 'Withdraw',
+      icon: ArrowUpRight,
       minAmount: 10,
-      color: 'rose',
-      path: '/wallet/withdraw'
-    }
+      path: '/wallet/withdraw',
+      note: '1–3 business days · Secure transfer',
+      buttonText: 'Withdraw funds',
+      accent: 'rose',
+    },
   };
-  
+
   const config = $derived(modeConfig[activeMode]);
-  
+
+  const isSubmitDisabled = $derived(() => {
+    if (isLoading) return true;
+    
+    const amountNum = parseFloat(amount);
+    const isValidAmount = !isNaN(amountNum) && amountNum >= config.minAmount;
+    
+    if (!isValidAmount) return true;
+    
+    if (activeMode === 'deposit') return false;
+    
+    const hasBankDetails = bankName.trim() !== '' && 
+                          accountNumber.trim() !== '' && 
+                          accountName.trim() !== '';
+    return !hasBankDetails;
+  });
+
+  function triggerError(msg: string) {
+    errorMessage = msg;
+    showError = true;
+    setTimeout(() => { showError = false; }, 3000);
+  }
+
   function validateAmount(): boolean {
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      errorMessage = 'Enter a valid amount';
-      showError = true;
-      setTimeout(() => { showError = false; }, 3000);
+    const n = parseFloat(amount);
+    if (isNaN(n) || n <= 0) { triggerError('Enter a valid amount'); return false; }
+    if (n < config.minAmount) { triggerError(`Minimum is $${config.minAmount}`); return false; }
+    if (activeMode === 'withdraw' && n > balance) {
+      triggerError(`Insufficient balance. Available: $${balance.toLocaleString()}`);
       return false;
     }
-    
-    if (activeMode === 'withdraw' && numAmount > balance) {
-      errorMessage = `Insufficient balance. Available: $${balance.toLocaleString()}`;
-      showError = true;
-      setTimeout(() => { showError = false; }, 3000);
-      return false;
-    }
-    
-    if (numAmount < config.minAmount) {
-      errorMessage = `Minimum ${activeMode} is $${config.minAmount}`;
-      showError = true;
-      setTimeout(() => { showError = false; }, 3000);
-      return false;
-    }
-    
     return true;
   }
-  
+
   function validateWithdrawalDetails(): boolean {
     if (activeMode === 'withdraw') {
-      if (!bankName.trim()) {
-        errorMessage = 'Enter your bank name';
-        showError = true;
-        setTimeout(() => { showError = false; }, 3000);
-        return false;
-      }
-      if (!accountNumber.trim()) {
-        errorMessage = 'Enter your account number';
-        showError = true;
-        setTimeout(() => { showError = false; }, 3000);
-        return false;
-      }
-      if (!accountName.trim()) {
-        errorMessage = 'Enter account holder name';
-        showError = true;
-        setTimeout(() => { showError = false; }, 3000);
-        return false;
-      }
+      if (!bankName.trim())      { triggerError('Enter your bank name'); return false; }
+      if (!accountNumber.trim()) { triggerError('Enter your account number'); return false; }
+      if (!accountName.trim())   { triggerError('Enter account holder name'); return false; }
     }
     return true;
   }
-  
+
   async function handleSubmit() {
-    if (!validateAmount()) return;
-    if (!validateWithdrawalDetails()) return;
-    
+    if (!validateAmount() || !validateWithdrawalDetails()) return;
     isLoading = true;
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const numAmount = parseFloat(amount);
-    
-    if (activeMode === 'deposit') {
-      balance += numAmount;
-      transactionId = 'DEP_' + Math.random().toString(36).substr(2, 9).toUpperCase();
-    } else {
-      balance -= numAmount;
-      transactionId = 'WDL_' + Math.random().toString(36).substr(2, 9).toUpperCase();
-    }
-    
+    await new Promise(r => setTimeout(r, 1500));
+    const n = parseFloat(amount);
+    balance += activeMode === 'deposit' ? n : -n;
     isLoading = false;
     showSuccess = true;
-    
-    setTimeout(() => {
-      showSuccess = false;
-      resetForm();
-    }, 2500);
+    setTimeout(() => { showSuccess = false; resetForm(); }, 2500);
   }
-  
+
   function resetForm() {
     amount = '';
     bankName = '';
@@ -141,297 +110,619 @@
     accountName = '';
     selectedPaymentMethod = 'card';
   }
-  
+
   function setQuickAmount(value: number) {
     amount = value.toString();
-    errorMessage = '';
     showError = false;
   }
-  
+
   function switchMode(mode: 'deposit' | 'withdraw') {
     goto(modeConfig[mode].path);
   }
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-[6rem]">
-  <!-- Back Button - Responsive Floating -->
-  <button 
-    onclick={() => goto('/')}
-    class="fixed top-4 left-4 z-20 p-2 sm:p-2.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all active:scale-95 hidden md:block"
-  >
-    <ArrowLeft size={18} class="sm:w-5 sm:h-5 text-gray-600" />
-  </button>
-
-  <!-- Main Container - Responsive Padding -->
-  <div class="w-full px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-    <div class="max-w-md mx-auto">
-      <!-- Balance Card - Responsive Sizing -->
-      <div class="mb-6 sm:mb-8 text-center">
-        <div class="relative inline-block w-full">
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl sm:rounded-3xl blur-2xl opacity-30"></div>
-          <div class="relative bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div class="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16"></div>
-            <div class="absolute bottom-0 left-0 w-20 sm:w-24 h-20 sm:h-24 bg-white/5 rounded-full -ml-10 sm:-ml-12 -mb-10 sm:-mb-12"></div>
-            <div class="relative">
-              <div class="flex items-center justify-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
-                <Shield size={12} class="sm:w-3.5 sm:h-3.5 text-white/60" />
-                <span class="text-[10px] sm:text-xs font-medium text-white/60 uppercase tracking-wide">Total Balance</span>
-              </div>
-              <div class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1 sm:mb-2 tracking-tight">
-                ${balance.toLocaleString()}
-              </div>
-              <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                <div class="w-1 h-1 bg-white/40 rounded-full"></div>
-                <span class="text-[10px] sm:text-xs text-white/50">Available for use</span>
-                <div class="w-1 h-1 bg-white/40 rounded-full"></div>
-              </div>
-            </div>
-          </div>
+<div class="page">
+  <div class="container">
+    
+    <!-- Balance Card -->
+    <div class="balance-card">
+      <div class="balance-header">
+        <div class="balance-label">
+          <TrendingUp size={13} />
+          <span>Available Balance</span>
+        </div>
+        <div class="balance-chip">
+          <Sparkles size={10} />
+          <span>Active</span>
         </div>
       </div>
+      <div class="balance-amount">${balance.toLocaleString()}</div>
+      <div class="balance-sub">USD Account · Instant settlement</div>
+    </div>
 
-      <!-- Mode Toggle - Responsive (Now syncs with URL) -->
-      <div class="mb-6 sm:mb-8">
-        <div class="bg-gray-100/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-1">
-          <div class="grid grid-cols-2 gap-1">
-            <button
-              onclick={() => switchMode('deposit')}
-              class="relative py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300"
-              class:bg-white={activeMode === 'deposit'}
-              class:shadow-sm={activeMode === 'deposit'}
-            >
-              <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                <BanknoteArrowUp size={16} class="sm:w-4.5 sm:h-4.5 {activeMode === 'deposit' ? 'text-emerald-500' : 'text-gray-400'}" />
-                <span class="font-semibold text-xs sm:text-sm {activeMode === 'deposit' ? 'text-gray-900' : 'text-gray-500'}">
-                  Deposit
-                </span>
-              </div>
-            </button>
-            
-            <button
-              onclick={() => switchMode('withdraw')}
-              class="relative py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300"
-              class:bg-white={activeMode === 'withdraw'}
-              class:shadow-sm={activeMode === 'withdraw'}
-            >
-              <div class="flex items-center justify-center gap-1.5 sm:gap-2">
-                <BanknoteArrowDown size={16} class="sm:w-4.5 sm:h-4.5 {activeMode === 'withdraw' ? 'text-rose-500' : 'text-gray-400'}" />
-                <span class="font-semibold text-xs sm:text-sm {activeMode === 'withdraw' ? 'text-gray-900' : 'text-gray-500'}">
-                  Withdraw
-                </span>
-              </div>
-            </button>
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button
+        onclick={() => switchMode('deposit')}
+        class="mode-btn {activeMode === 'deposit' ? 'active-deposit' : ''}"
+      >
+        <ArrowDownLeft size={16} />
+        Deposit
+      </button>
+      <button
+        onclick={() => switchMode('withdraw')}
+        class="mode-btn {activeMode === 'withdraw' ? 'active-withdraw' : ''}"
+      >
+        <ArrowUpRight size={16} />
+        Withdraw
+      </button>
+    </div>
+
+    <!-- Main Card -->
+    <div class="action-card">
+      
+      <!-- Toasts -->
+      {#if showSuccess}
+        <div class="toast success">
+          <CheckCircle size={16} />
+          <span>{activeMode === 'deposit' ? 'Deposited' : 'Withdrew'} ${parseFloat(amount || '0').toLocaleString()} successfully</span>
+          <button onclick={() => showSuccess = false}><X size={12} /></button>
+        </div>
+      {/if}
+      {#if showError}
+        <div class="toast error">
+          <AlertCircle size={16} />
+          <span>{errorMessage}</span>
+          <button onclick={() => showError = false}><X size={12} /></button>
+        </div>
+      {/if}
+
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+
+        <!-- Amount Input -->
+        <div class="field">
+          <label class="field-label">Amount</label>
+          <div class="amount-wrapper">
+            <span class="currency-symbol">$</span>
+            <input
+              type="number"
+              bind:value={amount}
+              placeholder="0.00"
+              step="0.01"
+              min={config.minAmount}
+              class="amount-input {showError ? 'error' : ''} {activeMode}"
+            />
+          </div>
+          <p class="field-hint">Minimum ${config.minAmount}</p>
+        </div>
+
+        <!-- Quick Amounts -->
+        <div class="field">
+          <label class="field-label">Quick select</label>
+          <div class="quick-grid">
+            {#each quickAmounts as qa}
+              <button
+                type="button"
+                onclick={() => setQuickAmount(qa)}
+                class="quick-btn {parseFloat(amount) === qa ? (activeMode === 'deposit' ? 'active-deposit' : 'active-withdraw') : ''}"
+              >
+                ${qa.toLocaleString()}
+              </button>
+            {/each}
           </div>
         </div>
-      </div>
 
-      <!-- Transaction Card - Responsive -->
-      <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <!-- Success Message -->
-        {#if showSuccess}
-          <div class="m-3 sm:m-4 p-2.5 sm:p-3 bg-emerald-50 border border-emerald-200 rounded-lg sm:rounded-xl flex items-center gap-2 sm:gap-3 animate-slideDown">
-            <div class="p-1 bg-emerald-500 rounded-full flex-shrink-0">
-              <CheckCircle size={12} class="sm:w-3.5 sm:h-3.5 text-white" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs sm:text-sm font-semibold text-emerald-800 truncate">Success!</p>
-              <p class="text-[10px] sm:text-xs text-emerald-600 mt-0.5 truncate">
-                {activeMode === 'deposit' ? 'Deposited' : 'Withdrew'} ${parseFloat(amount).toLocaleString()}
-              </p>
-            </div>
-            <button onclick={() => showSuccess = false} class="text-emerald-500 flex-shrink-0">
-              <X size={14} class="sm:w-4 sm:h-4" />
-            </button>
-          </div>
-        {/if}
-        
-        <!-- Error Message -->
-        {#if showError}
-          <div class="m-3 sm:m-4 p-2.5 sm:p-3 bg-rose-50 border border-rose-200 rounded-lg sm:rounded-xl flex items-center gap-2 sm:gap-3 animate-slideDown">
-            <div class="p-1 bg-rose-500 rounded-full flex-shrink-0">
-              <AlertCircle size={12} class="sm:w-3.5 sm:h-3.5 text-white" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs sm:text-sm font-semibold text-rose-800 truncate">Error</p>
-              <p class="text-[10px] sm:text-xs text-rose-600 mt-0.5 truncate">{errorMessage}</p>
-            </div>
-            <button onclick={() => showError = false} class="text-rose-500 flex-shrink-0">
-              <X size={14} class="sm:w-4 sm:h-4" />
-            </button>
-          </div>
-        {/if}
-        
-        <form preventDefault={handleSubmit} class="p-4 sm:p-5 space-y-4 sm:space-y-5">
-          <!-- Amount Input -->
-          <div>
-            <label class="block text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 sm:mb-2">
-              Enter Amount
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-gray-400 font-light">$</span>
-              <input
-                type="number"
-                bind:value={amount}
-                placeholder="0"
-                step="0.01"
-                min={config.minAmount}
-                class="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-xl sm:text-2xl font-semibold border-2 border-gray-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-{config.color}-500 focus:border-{config.color}-500 outline-none transition bg-gray-50/50"
-                class:border-rose-200={showError}
-              />
-            </div>
-            <p class="text-[10px] sm:text-xs text-gray-400 mt-1.5 text-center">
-              Minimum: ${config.minAmount}
-            </p>
-          </div>
-          
-          <!-- Quick Amounts - Responsive Grid -->
-          <div>
-            <p class="text-[10px] sm:text-xs font-medium text-gray-500 mb-2 text-center">Quick Select</p>
-            <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
-              {#each quickAmounts as qa}
+        <!-- Payment Methods (Deposit only) -->
+        {#if activeMode === 'deposit'}
+          <div class="field">
+            <label class="field-label">Payment method</label>
+            <div class="methods-grid">
+              {#each paymentMethods as m}
                 <button
                   type="button"
-                  onclick={() => setQuickAmount(qa)}
-                  class="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg sm:rounded-xl transition-all {parseFloat(amount) === qa ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                  onclick={() => selectedPaymentMethod = m.id}
+                  class="method-btn {selectedPaymentMethod === m.id ? 'active' : ''}"
                 >
-                  ${qa}
+                  <m.icon size={18} />
+                  <span>{m.name}</span>
                 </button>
               {/each}
             </div>
           </div>
-          
-          <!-- Payment Method (Deposit only) - Responsive Grid -->
-          {#if activeMode === 'deposit'}
-            <div>
-              <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 text-center">
-                Payment Method
-              </p>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2">
-                {#each paymentMethods as method}
-                  <button
-                    type="button"
-                    onclick={() => selectedPaymentMethod = method.id}
-                    class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-center transition-all {selectedPaymentMethod === method.id ? 'bg-indigo-50 border-2 border-indigo-200' : 'bg-gray-50 border border-gray-100'}"
-                  >
-                    <method.icon size={18} class="sm:w-5 sm:h-5 {selectedPaymentMethod === method.id ? 'text-indigo-600 mx-auto' : 'text-gray-400 mx-auto'}" />
-                    <p class="text-[10px] sm:text-xs font-medium mt-1 {selectedPaymentMethod === method.id ? 'text-indigo-600' : 'text-gray-500'}">{method.name}</p>
-                  </button>
-                {/each}
-              </div>
+        {/if}
+
+        <!-- Bank Details (Withdraw only) -->
+        {#if activeMode === 'withdraw'}
+          <div class="field">
+            <label class="field-label">Bank details</label>
+            <div class="bank-fields">
+              <input type="text" bind:value={bankName} placeholder="Bank name" class="bank-input" />
+              <input type="text" bind:value={accountNumber} placeholder="Account number" class="bank-input" />
+              <input type="text" bind:value={accountName} placeholder="Account holder name" class="bank-input" />
             </div>
-          {/if}
-          
-          <!-- Bank Details (Withdrawal only) - Responsive -->
-          {#if activeMode === 'withdraw'}
-            <div class="space-y-3">
-              <div class="text-center mb-1 sm:mb-2">
-                <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank Account</p>
-              </div>
-              
-              <div>
-                <input
-                  type="text"
-                  bind:value={bankName}
-                  placeholder="Bank name"
-                  class="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition bg-gray-50/50"
-                />
-              </div>
-              
-              <div>
-                <input
-                  type="text"
-                  bind:value={accountNumber}
-                  placeholder="Account number"
-                  class="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition bg-gray-50/50"
-                />
-              </div>
-              
-              <div>
-                <input
-                  type="text"
-                  bind:value={accountName}
-                  placeholder="Account holder name"
-                  class="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm border border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition bg-gray-50/50"
-                />
-              </div>
-            </div>
-          {/if}
-          
-          <!-- Submit Button - Responsive -->
-          <button
-            type="submit"
-            disabled={isLoading}
-            class="w-full bg-gradient-to-r {config.bgGradient} text-white py-3 sm:py-3.5 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base transition-all hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {#if isLoading}
-              <span class="flex items-center justify-center gap-2">
-                <div class="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-xs sm:text-sm">Processing...</span>
-              </span>
-            {:else}
-              <span class="flex items-center justify-center gap-1.5 sm:gap-2">
-                <config.icon size={16} class="sm:w-4.5 sm:h-4.5" />
-                {config.buttonText}
-              </span>
-            {/if}
-          </button>
-          
-          <!-- Info Note - Responsive -->
-          <div class="flex items-center justify-center gap-1.5 sm:gap-2 pt-1 sm:pt-2">
-            <Clock size={10} class="sm:w-3 sm:h-3 text-gray-400" />
-            <p class="text-[9px] sm:text-[10px] text-gray-400 text-center">
-              {#if activeMode === 'deposit'}
-                Instant • Secure • No fees
-              {:else}
-                1-3 business days • Secure transfer
-              {/if}
-            </p>
           </div>
-          
-          <!-- Transaction History Link - Responsive -->
-          <div class="text-center pt-1 border-t border-gray-100 mt-2">
-            <a href="/wallet/history" class="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-400 hover:text-indigo-600 transition-colors">
-              <History size={10} class="sm:w-3 sm:h-3" />
-              Transaction History
-            </a>
+        {/if}
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          disabled={isSubmitDisabled()}
+          class="submit-btn {activeMode}"
+        >
+          {#if isLoading}
+            <div class="spinner" />
+            <span>Processing…</span>
+          {:else}
+            <config.icon size={16} />
+            <span>{config.buttonText}</span>
+          {/if}
+        </button>
+
+        <!-- Validation Hint -->
+        {#if !isSubmitDisabled() && !isLoading}
+          <p class="hint-success">✓ Ready to {activeMode === 'deposit' ? 'deposit' : 'withdraw'}</p>
+        {:else if !isLoading && activeMode === 'withdraw' && parseFloat(amount) >= config.minAmount && (!bankName || !accountNumber || !accountName)}
+          <p class="hint-warning">⚠️ Please complete all bank details</p>
+        {:else if !isLoading && (!parseFloat(amount) || parseFloat(amount) < config.minAmount)}
+          <p class="hint-muted">Enter an amount (min ${config.minAmount}) to continue</p>
+        {/if}
+
+        <!-- Footer -->
+        <div class="form-footer">
+          <div class="footer-note">
+            <Clock size={11} />
+            <span>{config.note}</span>
           </div>
-        </form>
-      </div>
+          <a href="/wallet/history" class="history-link">
+            <History size={11} />
+            History
+          </a>
+        </div>
+
+      </form>
     </div>
   </div>
 </div>
 
 <style>
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .page {
+    min-height: 100vh;
+    background: #f5f2eb;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding-bottom: 3rem;
   }
-  
-  .animate-slideDown {
-    animation: slideDown 0.2s ease-out;
+
+  .container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
   }
-  
-  /* Responsive touch targets for mobile */
-  @media (max-width: 640px) {
-    button, 
-    [type="button"],
-    [type="submit"] {
-      min-height: 44px;
-    }
-    
-    input {
-      font-size: 16px !important; /* Prevents zoom on iOS */
-    }
+
+  /* Balance Card */
+  .balance-card {
+    background: linear-gradient(135deg, #2c2418, #1a1610);
+    border-radius: 24px;
+    padding: 24px;
+    margin-bottom: 20px;
   }
-  
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
+
+  .balance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .balance-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #b8ab9a;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 12px;
+    border-radius: 40px;
+  }
+
+  .balance-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #fef3c7;
+    background: rgba(245, 158, 11, 0.2);
+    padding: 4px 10px;
+    border-radius: 40px;
+  }
+
+  .balance-amount {
+    font-size: 44px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+
+  .balance-sub {
+    font-size: 12px;
+    color: #b8ab9a;
+  }
+
+  /* Mode Toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 8px;
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 60px;
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: none;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+    color: #9b8f7e;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active-deposit {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .mode-btn.active-withdraw {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Action Card */
+  .action-card {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 24px;
+    padding: 24px;
+  }
+
+  /* Toasts */
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .toast.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .toast.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  .toast button {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  /* Form Elements */
+  .field {
+    margin-bottom: 20px;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9b8f7e;
+    margin-bottom: 8px;
+  }
+
+  .field-hint {
+    font-size: 10px;
+    color: #b8ab9a;
+    margin-top: 6px;
+  }
+
+  /* Amount Input */
+  .amount-wrapper {
+    position: relative;
+  }
+
+  .currency-symbol {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    font-weight: 500;
+    color: #b8ab9a;
+  }
+
+  .amount-input {
+    width: 100%;
+    padding: 14px 14px 14px 36px;
+    font-size: 24px;
+    font-weight: 600;
+    background: #fefdfb;
+    border: 1.5px solid #e8e4dc;
+    border-radius: 16px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .amount-input:focus {
+    border-color: #d1cbbc;
+  }
+
+  .amount-input.deposit:focus {
+    border-color: #10b981;
+  }
+
+  .amount-input.withdraw:focus {
+    border-color: #ef4444;
+  }
+
+  .amount-input.error {
+    border-color: #ef4444;
+  }
+
+  /* Quick Amounts */
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .quick-btn {
+    padding: 10px 0;
+    background: #f0ebe3;
+    border: none;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4a3e2e;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .quick-btn:hover {
+    background: #e8e0d6;
+  }
+
+  .quick-btn.active-deposit {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .quick-btn.active-withdraw {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Payment Methods */
+  .methods-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .method-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: #f0ebe3;
+    border: 1px solid #e8e4dc;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .method-btn.active {
+    background: #ede9fe;
+    border-color: #c4b5fd;
+    color: #6d28d9;
+  }
+
+  /* Bank Fields */
+  .bank-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bank-input {
+    padding: 12px 14px;
+    background: #fefdfb;
+    border: 1.5px solid #e8e4dc;
+    border-radius: 14px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .bank-input:focus {
+    border-color: #ef4444;
+  }
+
+  /* Submit Button */
+  .submit-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border: none;
+    border-radius: 60px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .submit-btn.deposit {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+
+  .submit-btn.deposit:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .submit-btn.withdraw {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+  }
+
+  .submit-btn.withdraw:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* Hints */
+  .hint-success {
+    text-align: center;
+    font-size: 11px;
+    color: #10b981;
+    margin-top: 12px;
+  }
+
+  .hint-warning {
+    text-align: center;
+    font-size: 11px;
+    color: #f59e0b;
+    margin-top: 12px;
+  }
+
+  .hint-muted {
+    text-align: center;
+    font-size: 11px;
+    color: #b8ab9a;
+    margin-top: 12px;
+  }
+
+  /* Form Footer */
+  .form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e8e4dc;
+  }
+
+  .footer-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #b8ab9a;
+  }
+
+  .history-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .history-link:hover {
+    color: #f59e0b;
+  }
+
+  /* Remove number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 480px) {
+    .container {
+      padding: 16px;
+    }
+
+    .balance-amount {
+      font-size: 34px;
+    }
+
+    .quick-grid {
+      gap: 6px;
+    }
+
+    .quick-btn {
+      padding: 8px 0;
+      font-size: 11px;
+    }
+
+    .methods-grid {
+      gap: 6px;
+    }
+
+    .method-btn {
+      padding: 10px 4px;
+    }
+
+    .action-card {
+      padding: 18px;
+    }
   }
 </style>

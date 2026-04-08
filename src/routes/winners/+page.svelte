@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Trophy, Users, Calendar, ArrowUpRight, Medal, Gift, TrendingUp, Sparkles, Crown } from 'lucide-svelte';
+  import { Trophy, Users, Calendar, ArrowUpRight, Medal, Gift, TrendingUp, Sparkles, Crown, ChevronRight, Award, Clock, Star, Zap } from 'lucide-svelte';
 
   // Sample winners data - replace with your actual data source
   interface Winner {
@@ -44,6 +44,9 @@
   const silverWinners = winners.filter(w => w.tier === 'silver');
   const bronzeWinners = winners.filter(w => w.tier === 'bronze');
 
+  // Top 3 winners
+  const topWinners = [...winners].sort((a, b) => b.amount - a.amount).slice(0, 3);
+
   // Format date
   function formatDate(date: Date): string {
     return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
@@ -60,197 +63,784 @@
     return `$${amount.toLocaleString()}`;
   }
 
-  // Get tier icon and color
+  // Get tier info
   function getTierInfo(tier: string) {
     switch(tier) {
       case 'gold':
-        return { icon: Crown, color: 'text-amber-500', bg: 'bg-amber-100', border: 'border-amber-200' };
+        return { icon: Crown, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', label: 'Gold' };
       case 'silver':
-        return { icon: Medal, color: 'text-gray-500', bg: 'bg-gray-100', border: 'border-gray-200' };
+        return { icon: Medal, color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-100', label: 'Silver' };
       case 'bronze':
-        return { icon: Gift, color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200' };
+        return { icon: Gift, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', label: 'Bronze' };
       default:
-        return { icon: Trophy, color: 'text-blue-500', bg: 'bg-blue-100', border: 'border-blue-200' };
+        return { icon: Trophy, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', label: 'Winner' };
     }
   }
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-[6rem]">
+<div class="page">
   <!-- Header -->
-  <div class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="p-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl">
-            <Trophy size={24} class="text-white" />
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Winners Circle</h1>
-            <p class="text-sm text-gray-500">Celebrating our lucky winners</p>
-          </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="logo-area">
+        <div class="icon-wrap">
+          <Trophy size={22} />
         </div>
-        <div class="flex items-center gap-2 text-sm text-gray-500">
-          <Users size={16} />
-          <span>{winners.length} Winners</span>
+        <div>
+          <h1>Winners Circle</h1>
+          <p>Celebrating our lucky winners</p>
         </div>
+      </div>
+      <div class="stats-badge">
+        <Users size={16} />
+        <span>{winners.length} Winners</span>
       </div>
     </div>
-  </div>
+  </header>
 
-  <!-- Total Payout Card -->
-  <div class="max-w-7xl mx-auto px-4 py-6">
-    <div class="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl overflow-hidden">
-      <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-      <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
-      <div class="relative px-6 py-8 text-center">
-        <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm mb-4">
-          <TrendingUp size={14} class="text-emerald-300" />
-          <span class="text-xs font-medium text-white">Total Payout to Date</span>
-        </div>
-        <div class="text-5xl md:text-6xl font-bold text-white mb-3">
-          {formattedTotalPayout}
-        </div>
-        <div class="flex items-center justify-center gap-4 text-white/80 text-sm">
-          <span class="flex items-center gap-1">
-            <Gift size={14} />
-            {winners.length} Winners
-          </span>
-          <span>•</span>
-          <span class="flex items-center gap-1">
-            <Calendar size={14} />
-            Lifetime
-          </span>
-        </div>
+  <main class="content">
+    <!-- Total Payout Card -->
+    <div class="payout-card">
+      <div class="payout-label">
+        <TrendingUp size={13} />
+        <span>Total Payout to Date</span>
+      </div>
+      <div class="payout-amount">{formattedTotalPayout}</div>
+      <div class="payout-sub">
+        <span>≈ {totalPayout / 1000000}M pts</span>
+        <span class="dot">•</span>
+        <span>Lifetime</span>
       </div>
     </div>
-  </div>
 
-  <!-- Stats Grid -->
-  <div class="max-w-7xl mx-auto px-4 pb-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center justify-between">
+    <!-- Top Winners Podium -->
+    <div class="podium-section">
+      <div class="section-header">
+        <div class="section-title">
+          <Crown size={18} class="title-icon" />
           <div>
-            <p class="text-sm text-gray-500">Gold Tier Winners</p>
-            <p class="text-2xl font-bold text-amber-600">{goldWinners.length}</p>
-          </div>
-          <div class="p-3 bg-amber-100 rounded-full">
-            <Crown size={24} class="text-amber-600" />
+            <h2>Top Winners</h2>
+            <p>Highest earners all time</p>
           </div>
         </div>
-        <p class="text-xs text-gray-400 mt-2">Biggest prize winners</p>
+        <span class="section-badge">All Time</span>
       </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500">Silver Tier Winners</p>
-            <p class="text-2xl font-bold text-gray-600">{silverWinners.length}</p>
-          </div>
-          <div class="p-3 bg-gray-100 rounded-full">
-            <Medal size={24} class="text-gray-600" />
-          </div>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">Consistent winners</p>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500">Bronze Tier Winners</p>
-            <p class="text-2xl font-bold text-orange-600">{bronzeWinners.length}</p>
-          </div>
-          <div class="p-3 bg-orange-100 rounded-full">
-            <Gift size={24} class="text-orange-600" />
-          </div>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">New & rising stars</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Winners Section -->
-  {#if recentWinners.length > 0}
-    <div class="max-w-7xl mx-auto px-4 pb-6">
-      <div class="flex items-center gap-2 mb-4">
-        <Sparkles size={20} class="text-amber-500" />
-        <h2 class="text-xl font-bold text-gray-900">Recent Winners</h2>
-        <span class="text-sm text-gray-500">Last 30 days</span>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {#each recentWinners as winner}
-          {@const tierInfo = getTierInfo(winner.tier)}
-          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 {tierInfo.bg} rounded-full flex items-center justify-center">
-                <tierInfo.icon size={20} class={tierInfo.color} />
-              </div>
-              <div class="flex-1">
-                <h3 class="font-semibold text-gray-900">{winner.name}</h3>
-                <p class="text-xs text-gray-500">{winner.prize}</p>
-              </div>
-              <ArrowUpRight size={16} class="text-gray-400" />
+      <div class="podium-grid">
+        {#each topWinners as winner, idx}
+          <div class="podium-card {idx === 0 ? 'first' : idx === 1 ? 'second' : 'third'}">
+            <div class="podium-rank">{idx + 1}</div>
+            <div class="podium-avatar">
+              <span class="avatar-initial">{winner.name.charAt(0)}</span>
             </div>
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="text-2xl font-bold text-gray-900">${winner.amount.toLocaleString()}</p>
-                <p class="text-xs text-gray-400">{formatDate(winner.date)}</p>
-              </div>
-              <div class="text-right">
-                <span class="inline-block px-2 py-1 {tierInfo.bg} {tierInfo.color} text-xs font-semibold rounded-full capitalize">
-                  {winner.tier}
-                </span>
-              </div>
-            </div>
+            <div class="podium-name">{winner.name.split(' ')[0]}</div>
+            <div class="podium-amount">{formatAmount(winner.amount)}</div>
+            <div class="podium-prize">{winner.prize}</div>
           </div>
         {/each}
       </div>
     </div>
-  {/if}
 
-  <!-- All Winners Table -->
-  <div class="max-w-7xl mx-auto px-4 pb-12">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-        <h2 class="font-semibold text-gray-900">All Time Winners</h2>
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon gold-bg">
+          <Crown size={18} />
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{goldWinners.length}</span>
+          <span class="stat-label">Gold Winners</span>
+        </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
-              <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Prize</th>
-              <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Won</th>
-              <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tier</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            {#each winners as winner}
-              {@const tierInfo = getTierInfo(winner.tier)}
-              <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 {tierInfo.bg} rounded-full flex items-center justify-center">
-                      <tierInfo.icon size={16} class={tierInfo.color} />
-                    </div>
-                    <span class="font-medium text-gray-900">{winner.name}</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 text-gray-600">{winner.prize}</td>
-                <td class="px-6 py-4">
-                  <span class="font-bold text-gray-900">${winner.amount.toLocaleString()}</span>
-                </td>
-                <td class="px-6 py-4 text-gray-500 text-sm">{formatDate(winner.date)}</td>
-                <td class="px-6 py-4">
-                  <span class="inline-flex items-center gap-1 px-2 py-1 {tierInfo.bg} {tierInfo.color} text-xs font-semibold rounded-full capitalize">
-                    <tierInfo.icon size={12} />
-                    {winner.tier}
-                  </span>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+      <div class="stat-card">
+        <div class="stat-icon silver-bg">
+          <Medal size={18} />
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{silverWinners.length}</span>
+          <span class="stat-label">Silver Winners</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon bronze-bg">
+          <Gift size={18} />
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{bronzeWinners.length}</span>
+          <span class="stat-label">Bronze Winners</span>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- Recent Winners -->
+    {#if recentWinners.length > 0}
+      <section class="prizes-section">
+        <div class="prizes-header">
+          <div class="prizes-title-group">
+            <Sparkles size={20} class="sparkle-icon" />
+            <div>
+              <h2 class="prizes-title">Recent Winners</h2>
+              <p class="prizes-sub">Last 30 days</p>
+            </div>
+          </div>
+          <span class="active-badge">{recentWinners.length} New</span>
+        </div>
+        <div class="prizes-grid">
+          {#each recentWinners as winner}
+            {@const tierInfo = getTierInfo(winner.tier)}
+            <div class="prize-card">
+              <div class="prize-card-inner">
+                <div class="prize-top">
+                  <div class="winner-name-group">
+                    <div class="winner-avatar {tierInfo.bg}">
+                      <tierInfo.icon size={14} class={tierInfo.color} />
+                    </div>
+                    <span class="prize-name">{winner.name}</span>
+                  </div>
+                  <span class="prize-badge">{winner.prize}</span>
+                </div>
+                <div class="prize-amount">{formatAmount(winner.amount)}</div>
+                <div class="prize-bottom">
+                  <div class="prize-time">
+                    <Clock size={12} />
+                    <span>{formatDate(winner.date)}</span>
+                  </div>
+                  <span class="tier-chip {winner.tier}">{tierInfo.label}</span>
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    <!-- All Winners Table -->
+    <section class="prizes-section">
+      <div class="prizes-header">
+        <div class="prizes-title-group">
+          <Award size={20} class="award-icon" />
+          <div>
+            <h2 class="prizes-title">All Winners</h2>
+            <p class="prizes-sub">Complete history</p>
+          </div>
+        </div>
+        <span class="active-badge">{winners.length} Total</span>
+      </div>
+      <div class="winners-table">
+        <div class="table-header">
+          <span>Winner</span>
+          <span>Prize</span>
+          <span>Amount</span>
+          <span>Date</span>
+          <span>Tier</span>
+        </div>
+        <div class="table-body">
+          {#each winners as winner}
+            {@const tierInfo = getTierInfo(winner.tier)}
+            <div class="table-row">
+              <div class="winner-cell">
+                <div class="winner-avatar-sm {tierInfo.bg}">
+                  <tierInfo.icon size={12} class={tierInfo.color} />
+                </div>
+                <span>{winner.name}</span>
+              </div>
+              <span class="prize-cell">{winner.prize}</span>
+              <span class="amount-cell">${winner.amount.toLocaleString()}</span>
+              <span class="date-cell">{formatDate(winner.date)}</span>
+              <span class="tier-cell {winner.tier}">{tierInfo.label}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </section>
+  </main>
 </div>
+
+<style>
+  .page {
+    min-height: 100vh;
+    background: #f5f2eb;
+    padding-bottom: 4rem;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Header */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #faf8f4;
+    border-bottom: 1px solid #e8e4dc;
+  }
+
+  .topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icon-wrap {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .logo-area h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c2418;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .logo-area p {
+    font-size: 11px;
+    color: #9b8f7e;
+    margin: 0;
+  }
+
+  .stats-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f0ebe3;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4a3e2e;
+  }
+
+  /* Content */
+  .content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 0;
+  }
+
+  /* Payout Card */
+  .payout-card {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 20px;
+    padding: 28px 24px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .payout-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    background: #f0ebe3;
+    border-radius: 40px;
+    padding: 4px 12px;
+    margin-bottom: 12px;
+  }
+
+  .payout-amount {
+    font-size: 48px;
+    font-weight: 600;
+    color: #2c2418;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .payout-sub {
+    font-size: 12px;
+    color: #b8ab9a;
+  }
+
+  .dot {
+    margin: 0 6px;
+  }
+
+  /* Podium Section */
+  .podium-section {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .title-icon {
+    color: #b8ab9a;
+  }
+
+  .section-title h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c2418;
+    margin: 0 0 2px;
+    line-height: 1;
+  }
+
+  .section-title p {
+    font-size: 11px;
+    color: #b8ab9a;
+    margin: 0;
+  }
+
+  .section-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    background: #f0ebe3;
+    border-radius: 40px;
+    padding: 4px 12px;
+  }
+
+  .podium-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  @media (min-width: 640px) {
+    .podium-grid {
+      flex-direction: row;
+      gap: 16px;
+    }
+  }
+
+  .podium-card {
+    flex: 1;
+    text-align: center;
+    padding: 16px;
+    background: #fefdfb;
+    border: 1px solid #e8e4dc;
+    border-radius: 16px;
+    transition: all 0.2s;
+  }
+
+  .podium-card.first {
+    background: linear-gradient(135deg, #fefcf8, #fffbeb);
+    border-color: #fde68a;
+  }
+
+  .podium-card.second {
+    background: linear-gradient(135deg, #fefcf8, #f9fafb);
+    border-color: #e5e7eb;
+  }
+
+  .podium-card.third {
+    background: linear-gradient(135deg, #fefcf8, #fff7ed);
+    border-color: #fed7aa;
+  }
+
+  .podium-rank {
+    font-size: 14px;
+    font-weight: 600;
+    color: #b8ab9a;
+    margin-bottom: 8px;
+  }
+
+  .podium-card.first .podium-rank { color: #f59e0b; }
+  .podium-card.second .podium-rank { color: #6b7280; }
+  .podium-card.third .podium-rank { color: #ea580c; }
+
+  .podium-avatar {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 10px;
+    background: #f0ebe3;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .podium-card.first .podium-avatar { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+  .podium-card.second .podium-avatar { background: linear-gradient(135deg, #d1d5db, #9ca3af); }
+  .podium-card.third .podium-avatar { background: linear-gradient(135deg, #fb923c, #ea580c); }
+
+  .avatar-initial {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+  }
+
+  .podium-name {
+    font-weight: 600;
+    color: #2c2418;
+    margin-bottom: 4px;
+  }
+
+  .podium-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2c2418;
+    margin-bottom: 4px;
+  }
+
+  .podium-prize {
+    font-size: 10px;
+    color: #b8ab9a;
+  }
+
+  /* Stats Row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  @media (min-width: 640px) {
+    .stats-row {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .stat-card {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .gold-bg { background: #fef3c7; color: #f59e0b; }
+  .silver-bg { background: #f3f4f6; color: #6b7280; }
+  .bronze-bg { background: #ffedd5; color: #ea580c; }
+
+  .stat-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: #2c2418;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #b8ab9a;
+    font-weight: 500;
+  }
+
+  /* Prizes Section */
+  .prizes-section {
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .prizes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .prizes-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sparkle-icon, .award-icon {
+    color: #b8ab9a;
+  }
+
+  .prizes-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c2418;
+    margin: 0 0 2px;
+    line-height: 1;
+  }
+
+  .prizes-sub {
+    font-size: 11px;
+    color: #b8ab9a;
+    margin: 0;
+  }
+
+  .active-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    background: #f0ebe3;
+    border-radius: 40px;
+    padding: 4px 12px;
+  }
+
+  .prizes-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @media (min-width: 640px) {
+    .prizes-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 900px) {
+    .prizes-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .prize-card {
+    background: #fefdfb;
+    border: 1px solid #e8e4dc;
+    border-radius: 16px;
+    transition: all 0.2s;
+  }
+
+  .prize-card:hover {
+    border-color: #ddd6cc;
+    background: #ffffff;
+  }
+
+  .prize-card-inner {
+    padding: 14px;
+  }
+
+  .prize-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .winner-name-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .winner-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .prize-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2c2418;
+  }
+
+  .prize-badge {
+    font-size: 9px;
+    font-weight: 500;
+    color: #9b8f7e;
+    background: #f0ebe3;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .prize-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2c2418;
+    margin-bottom: 10px;
+  }
+
+  .prize-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #e8e4dc;
+  }
+
+  .prize-time {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #b8ab9a;
+  }
+
+  .tier-chip {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .tier-chip.gold { background: #fef3c7; color: #f59e0b; }
+  .tier-chip.silver { background: #f3f4f6; color: #6b7280; }
+  .tier-chip.bronze { background: #ffedd5; color: #ea580c; }
+
+  /* Winners Table */
+  .winners-table {
+    overflow-x: auto;
+  }
+
+  .table-header {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr 1fr 0.8fr;
+    padding: 10px 0;
+    border-bottom: 1px solid #e8e4dc;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9b8f7e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .table-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr 1fr 0.8fr;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0ebe3;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .table-row:hover {
+    background: #fefdfb;
+  }
+
+  .winner-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .winner-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .prize-cell {
+    color: #4a3e2e;
+  }
+
+  .amount-cell {
+    font-weight: 600;
+    color: #2c2418;
+  }
+
+  .date-cell {
+    font-size: 12px;
+    color: #b8ab9a;
+  }
+
+  .tier-cell {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    width: fit-content;
+  }
+
+  .tier-cell.gold { background: #fef3c7; color: #f59e0b; }
+  .tier-cell.silver { background: #f3f4f6; color: #6b7280; }
+  .tier-cell.bronze { background: #ffedd5; color: #ea580c; }
+
+  @media (max-width: 700px) {
+    .table-header {
+      display: none;
+    }
+    
+    .table-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+    }
+    
+    .winner-cell {
+      width: 100%;
+    }
+    
+    .prize-cell, .amount-cell, .date-cell, .tier-cell {
+      font-size: 12px;
+    }
+    
+    .tier-cell {
+      margin-left: auto;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .content {
+      padding: 16px;
+    }
+    
+    .payout-amount {
+      font-size: 36px;
+    }
+    
+    .podium-card {
+      padding: 12px;
+    }
+    
+    .podium-amount {
+      font-size: 16px;
+    }
+  }
+</style>

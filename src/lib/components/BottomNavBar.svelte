@@ -25,11 +25,11 @@
 </script>
 
 {#if ['/', '/winners', '/wallet/deposit', '/wallet/withdraw'].includes($page.url.pathname)}
-  <div class="fixed w-4/5 md:w-1/3 border-2 border-gray-500 rounded-full bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-around py-2 px-3 shadow-xl shadow-black/20 bg-white/80 backdrop-blur-sm z-50">
+  <div class="fixed w-4/5 md:w-1/3 border-2 border-gray-500 rounded-full bottom-1 md:bottom-3 px-1 md:py-1  left-1/2 -translate-x-1/2 flex items-center justify-between md:justify-around shadow-xl shadow-black/20 bg-white/80 backdrop-blur-sm z-50">
     {#each navItems as item}
       {@const Icon = item.icon}
       {@const active = isActive(item)}
-      <div class={`rounded-full py-2 px-4 ${active ? 'bg-gray-300' : ''}`}>
+      <div class={`rounded-full py-2 px-6 ${active ? 'bg-gray-300' : ''}`}>
         <a class={`flex flex-col place-items-center ${active ? 'text-blue-500' : 'text-gray-600'}`} href={item.href}>
           <Icon />
           <span class="text-[12px]">{item.name}</span>

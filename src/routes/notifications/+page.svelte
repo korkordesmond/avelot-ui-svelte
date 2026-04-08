@@ -12,7 +12,9 @@
     CheckCheck,
     Trash2,
     Clock,
-    X
+    X,
+    Sparkles,
+    Gift
   } from 'lucide-svelte';
   
   // Types
@@ -132,11 +134,11 @@
   
   function getTypeColor(type: NotificationType) {
     switch(type) {
-      case 'success': return 'text-emerald-500';
-      case 'warning': return 'text-amber-500';
-      case 'prize': return 'text-purple-500';
-      case 'transaction': return 'text-blue-500';
-      default: return 'text-cyan-500';
+      case 'success': return 'success';
+      case 'warning': return 'warning';
+      case 'prize': return 'prize';
+      case 'transaction': return 'transaction';
+      default: return 'info';
     }
   }
   
@@ -156,167 +158,592 @@
   loadNotifications();
 </script>
 
-<div class="min-h-screen bg-gray-50">
+<div class="page">
   <!-- Header -->
-  <div class="sticky top-0 z-20 bg-white border-b border-gray-100">
-    <div class="max-w-2xl mx-auto px-4 py-3">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <button 
-            onclick={() => goto('/')}
-            class="p-1.5 -ml-1.5 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <ArrowLeft size={20} class="text-gray-600" />
-          </button>
-          <div class="flex items-center gap-2">
-            <Bell size={18} class="text-gray-600" />
-            <h1 class="text-lg font-semibold text-gray-900">Notifications</h1>
-            {#if unreadCount > 0}
-              <span class="text-xs text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
-                {unreadCount} new
-              </span>
-            {/if}
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="header-left">
+        <button onclick={() => goto('/')} class="back-btn">
+          <ArrowLeft size={20} />
+        </button>
+        <div class="logo-area">
+          <div class="icon-wrap">
+            <Bell size={20} />
+          </div>
+          <div>
+            <h1>Notifications</h1>
+            <p>Stay updated with your activity</p>
           </div>
         </div>
-        
-        <div class="flex items-center gap-2">
-          {#if unreadCount > 0}
-            <button
-              onclick={markAllAsRead}
-              class="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-              title="Mark all as read"
-            >
-              <CheckCheck size={18} class="text-gray-500" />
-            </button>
-          {/if}
+      </div>
+      <div class="header-right">
+        {#if unreadCount > 0}
+          <button onclick={markAllAsRead} class="mark-read-btn" title="Mark all as read">
+            <CheckCheck size={18} />
+            <span>Mark all</span>
+          </button>
+        {/if}
+        <div class="stats-badge">
+          <Bell size={14} />
+          <span>{unreadCount} New</span>
         </div>
       </div>
     </div>
-  </div>
-  
-  <div class="max-w-2xl mx-auto px-4 py-4">
-    <!-- Filter Toggle -->
-    <div class="mb-4">
-      <div class="inline-flex bg-gray-100 rounded-lg p-0.5">
-        <button
-          onclick={() => filter = 'all'}
-          class="px-4 py-1.5 text-sm font-medium rounded-md transition-all {filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
-        >
-          All
-        </button>
-        <button
-          onclick={() => filter = 'unread'}
-          class="px-4 py-1.5 text-sm font-medium rounded-md transition-all {filter === 'unread' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
-        >
-          Unread
-          {#if unreadCount > 0}
-            <span class="ml-1 text-xs text-indigo-600">{unreadCount}</span>
-          {/if}
-        </button>
-      </div>
+  </header>
+
+  <main class="content">
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button
+        onclick={() => filter = 'all'}
+        class="tab-btn {filter === 'all' ? 'active' : ''}"
+      >
+        All
+        <span class="tab-count">{notifications.length}</span>
+      </button>
+      <button
+        onclick={() => filter = 'unread'}
+        class="tab-btn {filter === 'unread' ? 'active' : ''}"
+      >
+        Unread
+        {#if unreadCount > 0}
+          <span class="tab-count unread">{unreadCount}</span>
+        {/if}
+      </button>
     </div>
-    
+
     <!-- Loading State -->
     {#if isLoading}
-      <div class="space-y-2">
+      <div class="loading-state">
         {#each [1, 2, 3] as i}
-          <div class="bg-white rounded-lg p-4 animate-pulse">
-            <div class="flex gap-3">
-              <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
-              <div class="flex-1">
-                <div class="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-                <div class="h-3 bg-gray-200 rounded w-2/3"></div>
-              </div>
+          <div class="skeleton-card">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-content">
+              <div class="skeleton-title"></div>
+              <div class="skeleton-message"></div>
             </div>
           </div>
         {/each}
       </div>
+    
     {:else if filteredNotifications.length === 0}
       <!-- Empty State -->
-      <div class="text-center py-12">
-        <div class="inline-flex p-3 bg-gray-100 rounded-full mb-3">
-          <Bell size={24} class="text-gray-400" />
+      <div class="empty-state">
+        <div class="empty-icon">
+          <Bell size={28} />
         </div>
-        <p class="text-sm text-gray-500">
-          {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
-        </p>
+        <h3>No notifications</h3>
+        <p>{filter === 'unread' ? "You're all caught up!" : "You don't have any notifications yet"}</p>
       </div>
+    
     {:else}
       <!-- Notifications List -->
-      <div class="space-y-1">
+      <div class="notifications-list">
         {#each filteredNotifications as notification (notification.id)}
           {@const Icon = getTypeIcon(notification.type)}
-          {@const iconColor = getTypeColor(notification.type)}
+          {@const typeColor = getTypeColor(notification.type)}
           
-          <div class="bg-white rounded-lg transition-all {notification.read ? 'opacity-70' : ''}">
-            <div class="p-4">
-              <div class="flex gap-3">
-                <!-- Icon -->
-                <div class="flex-shrink-0 mt-0.5">
-                  <Icon size={18} class={iconColor} />
+          <div class="notification-card {notification.read ? 'read' : 'unread'} {typeColor}">
+            <div class="notification-icon">
+              <Icon size={18} />
+            </div>
+            
+            <div class="notification-content">
+              <div class="notification-header">
+                <h3>{notification.title}</h3>
+                <div class="notification-meta">
+                  <span class="notification-time">
+                    <Clock size={10} />
+                    {formatTimestamp(notification.timestamp)}
+                  </span>
+                  <button
+                    onclick={() => deleteNotification(notification.id)}
+                    class="delete-btn"
+                    title="Delete"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
-                
-                <!-- Content -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2 mb-1">
-                    <h3 class={`text-sm font-medium ${notification.read ? 'text-gray-600' : 'text-gray-900'}`}>
-                      {notification.title}
-                    </h3>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                      <span class="text-xs text-gray-400">
-                        {formatTimestamp(notification.timestamp)}
-                      </span>
-                      <button
-                        onclick={() => deleteNotification(notification.id)}
-                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded-full transition-all"
-                        title="Delete"
-                      >
-                        <X size={12} class="text-gray-400" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <p class="text-xs text-gray-500 mb-2">
-                    {notification.message}
-                  </p>
-                  
-                  <div class="flex items-center gap-3">
-                    {#if notification.actionUrl}
-                      <a
-                        href={notification.actionUrl}
-                        onclick={() => markAsRead(notification.id)}
-                        class="text-xs text-indigo-600 hover:text-indigo-700 transition-colors"
-                      >
-                        View →
-                      </a>
-                    {/if}
-                    
-                    {#if !notification.read}
-                      <button
-                        onclick={() => markAsRead(notification.id)}
-                        class="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        Mark read
-                      </button>
-                    {/if}
-                  </div>
-                </div>
+              </div>
+              <p class="notification-message">{notification.message}</p>
+              <div class="notification-footer">
+                {#if notification.actionUrl}
+                  <a
+                    href={notification.actionUrl}
+                    onclick={() => markAsRead(notification.id)}
+                    class="action-link"
+                  >
+                    View details →
+                  </a>
+                {/if}
+                {#if !notification.read}
+                  <button
+                    onclick={() => markAsRead(notification.id)}
+                    class="mark-read-link"
+                  >
+                    Mark as read
+                  </button>
+                {/if}
               </div>
             </div>
           </div>
         {/each}
       </div>
     {/if}
-  </div>
+  </main>
 </div>
 
 <style>
-  /* Group hover for delete button */
-  .group-hover\:opacity-100 {
+  .page {
+    min-height: 100vh;
+    background: #f5f2eb;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Header */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #faf8f4;
+    border-bottom: 1px solid #e8e4dc;
+  }
+
+  .topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .back-btn {
+    padding: 8px;
+    border-radius: 50%;
+    color: #9b8f7e;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .back-btn:hover {
+    background: #f0ebe3;
+    color: #4a3e2e;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .icon-wrap {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .logo-area h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c2418;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .logo-area p {
+    font-size: 11px;
+    color: #9b8f7e;
+    margin: 0;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mark-read-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f0ebe3;
+    border: none;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4a3e2e;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mark-read-btn:hover {
+    background: #e8e0d6;
+  }
+
+  .stats-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #fef3c7;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #f59e0b;
+  }
+
+  /* Content */
+  .content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* Filter Tabs */
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: #fefcf8;
+    padding: 4px;
+    border-radius: 60px;
+    border: 1px solid #e8e4dc;
+    width: fit-content;
+  }
+
+  .tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 40px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #9b8f7e;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: #f0ebe3;
+    color: #2c2418;
+  }
+
+  .tab-count {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: #e8e4dc;
+    border-radius: 20px;
+    color: #9b8f7e;
+  }
+
+  .tab-count.unread {
+    background: #fef3c7;
+    color: #f59e0b;
+  }
+
+  /* Loading State */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .skeleton-card {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 16px;
+  }
+
+  .skeleton-icon {
+    width: 40px;
+    height: 40px;
+    background: #f0ebe3;
+    border-radius: 12px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-content {
+    flex: 1;
+  }
+
+  .skeleton-title {
+    width: 60%;
+    height: 14px;
+    background: #f0ebe3;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-message {
+    width: 80%;
+    height: 12px;
+    background: #f0ebe3;
+    border-radius: 4px;
+    animation: pulse 1.5s ease-in-out infinite 0.2s;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 20px;
+  }
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #f0ebe3;
+    border-radius: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b8ab9a;
+  }
+
+  .empty-state h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c2418;
+    margin-bottom: 6px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+    color: #b8ab9a;
+  }
+
+  /* Notifications List */
+  .notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .notification-card {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    background: #fefcf8;
+    border: 1px solid #e8e4dc;
+    border-radius: 16px;
+    transition: all 0.2s;
+  }
+
+  .notification-card:hover {
+    border-color: #ddd6cc;
+    background: #ffffff;
+  }
+
+  .notification-card.unread {
+    border-left: 3px solid;
+  }
+
+  .notification-card.success.unread { border-left-color: #10b981; }
+  .notification-card.warning.unread { border-left-color: #f59e0b; }
+  .notification-card.prize.unread { border-left-color: #8b5cf6; }
+  .notification-card.transaction.unread { border-left-color: #3b82f6; }
+  .notification-card.info.unread { border-left-color: #06b6d4; }
+
+  .notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .notification-card.success .notification-icon { background: #d1fae5; color: #10b981; }
+  .notification-card.warning .notification-icon { background: #fef3c7; color: #f59e0b; }
+  .notification-card.prize .notification-icon { background: #ede9fe; color: #8b5cf6; }
+  .notification-card.transaction .notification-icon { background: #dbeafe; color: #3b82f6; }
+  .notification-card.info .notification-icon { background: #cffafe; color: #06b6d4; }
+
+  .notification-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  .notification-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c2418;
+    margin: 0;
+  }
+
+  .notification-card.read .notification-header h3 {
+    color: #9b8f7e;
+  }
+
+  .notification-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .notification-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #b8ab9a;
+  }
+
+  .delete-btn {
+    padding: 4px;
+    border-radius: 6px;
+    background: none;
+    border: none;
+    color: #b8ab9a;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     opacity: 0;
   }
-  
-  div:has(> .group-hover\:opacity-100):hover button {
+
+  .notification-card:hover .delete-btn {
     opacity: 1;
+  }
+
+  .delete-btn:hover {
+    background: #f0ebe3;
+    color: #ef4444;
+  }
+
+  .notification-message {
+    font-size: 12px;
+    color: #6b5f4e;
+    margin: 0 0 10px;
+    line-height: 1.4;
+  }
+
+  .notification-card.read .notification-message {
+    color: #b8ab9a;
+  }
+
+  .notification-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .action-link {
+    font-size: 11px;
+    font-weight: 500;
+    color: #f59e0b;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .action-link:hover {
+    color: #ea580c;
+    text-decoration: underline;
+  }
+
+  .mark-read-link {
+    font-size: 11px;
+    font-weight: 500;
+    color: #9b8f7e;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .mark-read-link:hover {
+    color: #4a3e2e;
+  }
+
+  @media (max-width: 480px) {
+    .content {
+      padding: 16px;
+    }
+
+    .topbar-inner {
+      padding: 10px 16px;
+    }
+
+    .header-left {
+      gap: 8px;
+    }
+
+    .logo-area h1 {
+      font-size: 14px;
+    }
+
+    .mark-read-btn span {
+      display: none;
+    }
+
+    .mark-read-btn {
+      padding: 8px;
+    }
+
+    .filter-tabs {
+      width: 100%;
+    }
+
+    .tab-btn {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 12px;
+    }
+
+    .notification-card {
+      padding: 14px;
+    }
+
+    .notification-header h3 {
+      font-size: 13px;
+    }
+
+    .notification-message {
+      font-size: 11px;
+    }
   }
 </style>
